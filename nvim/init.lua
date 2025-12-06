@@ -48,18 +48,33 @@ require("lazy").setup({
   { "L3MON4D3/LuaSnip" },
   { "saadparwaiz1/cmp_luasnip" },
   { "nvim-lua/plenary.nvim" },
-  { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+  {
+    "nvim-treesitter/nvim-treesitter",
+    build = function()
+      vim.cmd("TSUpdateSync")  -- updates in sync, less CPU spike
+    end,
+    config = function()
+      require("nvim-treesitter.configs").setup({
+        highlight = { enable = true },
+        incremental_selection = { enable = false },
+        indent = { enable = false }, -- expensive on large files
+      })
+    end
+  },
   {
     "nvimtools/none-ls.nvim",
     config = function()
       local null_ls = require("null-ls")
       null_ls.setup({
-        sources = {
-          null_ls.builtins.formatting.clang_format,
-        },
-      })
-      vim.api.nvim_create_autocmd("BufWritePre", {
-        callback = function() vim.lsp.buf.format({ async = false }) end
+        sources = { null_ls.builtins.formatting.clang_format },
+        on_attach = function(client)
+          if client.supports_method("textDocument/formatting") then
+            vim.api.nvim_create_autocmd("BufWritePre", {
+              buffer = 0,
+              callback = function() vim.lsp.buf.format({ async = false }) end
+            })
+          end
+        end,
       })
     end
   },
@@ -82,16 +97,19 @@ cmp.setup({
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
     ["<C-Space>"] = cmp.mapping.complete(),
   }),
+  completion = { autocomplete = false }, -- avoid laggy automatic popup
   sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "luasnip" } }),
 })
 local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
 require("mason").setup()
-vim.lsp.config("clangd", {
-  cmd = { "clangd" },
+require("mason-lspconfig").setup({
+  ensure_installed = { "clangd" },
 })
-vim.lsp.enable("clangd")
+
+local lspconfig = require("lspconfig")
+lspconfig.clangd.setup({})
 
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
