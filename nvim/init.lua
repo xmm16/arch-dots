@@ -53,7 +53,6 @@ require("lazy").setup({
   { "L3MON4D3/LuaSnip" },
   { "saadparwaiz1/cmp_luasnip" },
   { "nvim-lua/plenary.nvim" },
-  { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
   {
     "nvimtools/none-ls.nvim",
     config = function()
