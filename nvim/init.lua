@@ -5,6 +5,9 @@ vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 vim.opt.mouse = "a"
 vim.opt.clipboard = "unnamedplus"
+vim.api.nvim_set_keymap('n', ',', '<C-w>', { noremap = true })
+vim.keymap.set({'n', 'v', 'i'}, '<PageUp>', '<Nop>')
+vim.keymap.set({'n', 'v', 'i'}, '<PageDown>', '<Nop>')
 
 vim.opt.termguicolors = true
 vim.cmd [[
@@ -41,7 +44,26 @@ require("lazy").setup({
   { "L3MON4D3/LuaSnip" },
   { "saadparwaiz1/cmp_luasnip" },
 
+{ "nvim-lua/plenary.nvim" },
   { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+{
+  "nvimtools/none-ls.nvim",
+  config = function()
+    local null_ls = require("null-ls")
+    null_ls.setup({
+      sources = {
+        null_ls.builtins.formatting.clang_format,
+        null_ls.builtins.formatting.black,
+      },
+    })
+
+    vim.api.nvim_create_autocmd("BufWritePre", {
+      callback = function()
+        vim.lsp.buf.format({ async = false })
+      end,
+    })
+  end,
+}
 })
 vim.cmd("colorscheme gruvbox")
 vim.cmd [[
@@ -95,13 +117,13 @@ cmp.event:on(
 )
 
 require("mason-lspconfig").setup({
-  ensure_installed = { "clangd" },
+  ensure_installed = { "clangd"},
 })
 
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 vim.lsp.config["clangd"] = {
-  cmd = { "clangd" },
+  cmd = { "clangd" , "--tweaks=-std=c++23" },
   capabilities = capabilities,
   on_attach = function(_, bufnr)
     local opts = { buffer = bufnr, silent = true }
@@ -132,3 +154,5 @@ vim.diagnostic.config({
   update_in_insert = false,
 })
 
+vim.g.netrw_banner = 0
+vim.g.netrw_liststyle = 3
