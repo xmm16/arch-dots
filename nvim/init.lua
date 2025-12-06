@@ -42,9 +42,6 @@ require("lazy").setup({
       ]]
     end
   },
-  { "neovim/nvim-lspconfig" },
-  { "williamboman/mason.nvim" },
-  { "williamboman/mason-lspconfig.nvim" },
   { "hrsh7th/nvim-cmp" },
   { "hrsh7th/cmp-nvim-lsp" },
   { "L3MON4D3/LuaSnip" },
@@ -58,7 +55,6 @@ require("lazy").setup({
         highlight = { enable = true },
         incremental_selection = { enable = false },
         indent = { enable = false },
-        autopairs = { enable = false }, -- optional if using nvim-autopairs
       })
     end
   },
@@ -68,12 +64,20 @@ require("lazy").setup({
       local null_ls = require("null-ls")
       null_ls.setup({
         sources = { null_ls.builtins.formatting.clang_format },
+        on_attach = function(client)
+          if client.supports_method("textDocument/formatting") then
+            vim.api.nvim_create_autocmd("BufWritePre", {
+              buffer = 0,
+              callback = function() vim.lsp.buf.format({ async = false }) end
+            })
+          end
+        end,
       })
     end
   },
 })
 
--- Comment and Autopairs
+-- Comment and autopairs
 require("Comment").setup()
 require("nvim-autopairs").setup({
   check_ts = true,
@@ -83,7 +87,7 @@ require("nvim-autopairs").setup({
   disable_filetype = { "TelescopePrompt" }
 })
 
--- CMP
+-- CMP setup
 local cmp = require("cmp")
 local luasnip = require("luasnip")
 cmp.setup({
@@ -92,35 +96,44 @@ cmp.setup({
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
     ["<C-Space>"] = cmp.mapping.complete(),
   }),
-  completion = { autocomplete = false }, -- manual trigger
+  completion = { autocomplete = false },
   sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "luasnip" } }),
 })
 local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
--- Mason
-require("mason").setup()
-require("mason-lspconfig").setup({ ensure_installed = { "clangd" } })
+-- Native LSP setup for C/C++
+local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
--- LSP (modern API)
-local lspconfig = require("lspconfig")
-lspconfig.clangd.setup({
-  cmd = { "clangd", "--background-index", "--clang-tidy", "--limit-results=500", "--completion-style=detailed" },
-  flags = { debounce_text_changes = 500 },
-  capabilities = require("cmp_nvim_lsp").default_capabilities(),
-  on_attach = function(client, bufnr)
-    client.server_capabilities.semanticTokensProvider = nil -- disable expensive semantic tokens
-    local opts = { buffer = bufnr, silent = true }
-    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-    vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-    vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-  end,
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "c", "cpp", "h", "hpp" },
+  callback = function()
+    local clients = vim.lsp.get_active_clients({ bufnr = 0 })
+    for _, c in ipairs(clients) do
+      if c.name == "clangd" then return end
+    end
+
+    vim.lsp.start({
+      name = "clangd",
+      cmd = { "clangd", "--background-index", "--clang-tidy", "--completion-style=detailed", "--limit-results=500" },
+      root_dir = vim.loop.cwd(),
+      capabilities = capabilities,
+      on_attach = function(client, bufnr)
+        client.server_capabilities.semanticTokensProvider = nil
+        local opts = { buffer = bufnr, silent = true }
+        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+        vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+        vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+      end
+    })
+  end
 })
 
+-- Diagnostics
 vim.diagnostic.config({
   float = { border = "single" },
-  virtual_text = false, -- reduces lag
+  virtual_text = false,
   signs = true,
   update_in_insert = false,
 })
