@@ -6,8 +6,8 @@ vim.opt.tabstop = 2
 vim.opt.mouse = "a"
 vim.opt.clipboard = "unnamedplus"
 vim.api.nvim_set_keymap('n', ',', '<C-w>', { noremap = true })
-vim.keymap.set({'n', 'v', 'i'}, '<PageUp>', '<Nop>')
-vim.keymap.set({'n', 'v', 'i'}, '<PageDown>', '<Nop>')
+vim.keymap.set({'n','v','i'}, '<PageUp>', '<Nop>')
+vim.keymap.set({'n','v','i'}, '<PageDown>', '<Nop>')
 
 vim.opt.termguicolors = true
 vim.cmd [[
@@ -18,15 +18,11 @@ vim.cmd [[
   highlight EndOfBuffer ctermbg=NONE
 ]]
 
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+local lazypath = vim.fn.stdpath("data").."/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
+    "git","clone","--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git","--branch=stable",lazypath,
   })
 end
 vim.opt.rtp:prepend(lazypath)
@@ -53,6 +49,7 @@ require("lazy").setup({
   { "L3MON4D3/LuaSnip" },
   { "saadparwaiz1/cmp_luasnip" },
   { "nvim-lua/plenary.nvim" },
+  { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
   {
     "nvimtools/none-ls.nvim",
     config = function()
@@ -63,68 +60,43 @@ require("lazy").setup({
           null_ls.builtins.formatting.black,
         },
       })
-
       vim.api.nvim_create_autocmd("BufWritePre", {
-        callback = function()
-          vim.lsp.buf.format({ async = false })
-        end,
+        callback = function() vim.lsp.buf.format({ async = false }) end
       })
-    end,
-  }
+    end
+  },
 })
 
 require("Comment").setup()
-require("nvim-autopairs").setup({
-  check_ts = true,
-  enable_check_bracket_line = false,
-  map_cr = true,
-  enable_moveright = true,
-  disable_filetype = { "TelescopePrompt" },
-})
+require("nvim-autopairs").setup({ check_ts=true, enable_check_bracket_line=false, map_cr=true, enable_moveright=true, disable_filetype={"TelescopePrompt"} })
 
-local cmp = require('cmp')
-local luasnip = require('luasnip')
-
+local cmp = require("cmp")
+local luasnip = require("luasnip")
 cmp.setup({
-  snippet = {
-    expand = function(args) luasnip.lsp_expand(args.body) end,
-  },
+  snippet = { expand = function(args) luasnip.lsp_expand(args.body) end },
   mapping = cmp.mapping.preset.insert({
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
     ["<C-Space>"] = cmp.mapping.complete(),
   }),
-  sources = cmp.config.sources({
-    { name = "nvim_lsp" },
-    { name = "luasnip" },
-  }),
+  sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "luasnip" } }),
 })
-
-local cmp_autopairs = require('nvim-autopairs.completion.cmp')
-cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done())
+local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
 require("mason").setup()
-require("mason-lspconfig").setup({
-  ensure_installed = { "clangd", "pyright" },
-})
+require("mason-lspconfig").setup({ ensure_installed = { "clangd", "pyright" } })
 
-local lspconfig = require("lspconfig")
-local capabilities = require("cmp_nvim_lsp").default_capabilities()
-
-lspconfig.clangd.setup({
+vim.lsp.config("clangd", {
   cmd = { "clangd", "--tweaks=-std=c++23" },
-  capabilities = capabilities,
-  on_attach = function(_, bufnr)
-    local opts = { buffer = bufnr, silent = true }
-    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-    vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-    vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-  end,
 })
+vim.lsp.enable("clangd")
 
-lspconfig.pyright.setup({
-  capabilities = capabilities,
-  on_attach = function(_, bufnr)
+vim.lsp.config("pyright", {})
+vim.lsp.enable("pyright")
+
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    local bufnr = args.buf
     local opts = { buffer = bufnr, silent = true }
     vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
     vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
@@ -153,5 +125,5 @@ vim.cmd [[
 
 require("nvim-treesitter.configs").setup({
   ensure_installed = { "c", "cpp", "lua", "python" },
-  highlight = { enable = true },
+  highlight = { enable = true }
 })
