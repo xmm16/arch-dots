@@ -1,22 +1,31 @@
+-- Basic options
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
 vim.opt.tabstop = 2
 vim.opt.mouse = "a"
+vim.opt.termguicolors = true
+
 vim.api.nvim_set_keymap('n', ',', '<C-w>', { noremap = true })
 vim.keymap.set({'n','v','i'}, '<PageUp>', '<Nop>')
 vim.keymap.set({'n','v','i'}, '<PageDown>', '<Nop>')
 
-vim.opt.termguicolors = true
+-- Highlight tweaks
 vim.cmd [[
   highlight Normal guibg=#1e1e1e guifg=#cdd6f4
   highlight NormalNC ctermbg=NONE
   highlight SignColumn ctermbg=NONE
   highlight LineNr ctermbg=NONE
   highlight EndOfBuffer ctermbg=NONE
+  highlight Pmenu ctermbg=NONE ctermfg=NONE
+  highlight PmenuSel ctermbg=NONE ctermfg=NONE
+  highlight PmenuThumb ctermbg=NONE
+  highlight FloatBorder ctermbg=NONE ctermfg=NONE
+  highlight NormalFloat ctermbg=NONE ctermfg=NONE
 ]]
 
+-- Lazy.nvim bootstrap
 local lazypath = vim.fn.stdpath("data").."/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -50,14 +59,16 @@ require("lazy").setup({
   { "nvim-lua/plenary.nvim" },
   {
     "nvim-treesitter/nvim-treesitter",
-    build = function()
-      vim.cmd("TSUpdateSync")  -- updates in sync, less CPU spike
-    end,
+    build = function() vim.cmd("TSUpdateSync") end,
     config = function()
       require("nvim-treesitter.configs").setup({
+        ensure_installed = { "c", "cpp" },
         highlight = { enable = true },
         incremental_selection = { enable = false },
-        indent = { enable = false }, -- expensive on large files
+        indent = { enable = false },
+        disable = function(_, bufnr)
+          return vim.api.nvim_buf_line_count(bufnr) > 500
+        end
       })
     end
   },
@@ -67,11 +78,13 @@ require("lazy").setup({
       local null_ls = require("null-ls")
       null_ls.setup({
         sources = { null_ls.builtins.formatting.clang_format },
-        on_attach = function(client)
+        on_attach = function(client, bufnr)
           if client.supports_method("textDocument/formatting") then
             vim.api.nvim_create_autocmd("BufWritePre", {
-              buffer = 0,
-              callback = function() vim.lsp.buf.format({ async = false }) end
+              buffer = bufnr,
+              callback = function()
+                vim.lsp.buf.format({ async = true })
+              end
             })
           end
         end,
@@ -80,6 +93,7 @@ require("lazy").setup({
   },
 })
 
+-- Comment & autopairs
 require("Comment").setup()
 require("nvim-autopairs").setup({
   check_ts = true,
@@ -89,6 +103,7 @@ require("nvim-autopairs").setup({
   disable_filetype = { "TelescopePrompt" }
 })
 
+-- CMP setup (manual trigger only)
 local cmp = require("cmp")
 local luasnip = require("luasnip")
 cmp.setup({
@@ -97,31 +112,24 @@ cmp.setup({
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
     ["<C-Space>"] = cmp.mapping.complete(),
   }),
-  completion = { autocomplete = false }, -- avoid laggy automatic popup
+  completion = { autocomplete = false },
   sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "luasnip" } }),
 })
 local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
+-- Mason & LSP setup
 require("mason").setup()
-require("mason-lspconfig").setup({
-  ensure_installed = { "clangd" },
-})
+require("mason-lspconfig").setup({ ensure_installed = { "clangd" } })
 
 local lspconfig = require("lspconfig")
-lspconfig.clangd.setup({})
-
-vim.api.nvim_create_autocmd("LspAttach", {
-  callback = function(args)
-    local bufnr = args.buf
-    local opts = { buffer = bufnr, silent = true }
-    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-    vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-    vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-  end,
+lspconfig.clangd.setup({
+  filetypes = { "c", "cpp", "objc", "objcpp" },
+  capabilities = require('cmp_nvim_lsp').default_capabilities(),
+  init_options = { semanticHighlighting = false },
 })
 
+-- Diagnostics
 vim.diagnostic.config({
   float = { border = "single" },
   virtual_text = true,
@@ -129,13 +137,6 @@ vim.diagnostic.config({
   update_in_insert = false,
 })
 
+-- Netrw
 vim.g.netrw_banner = 0
 vim.g.netrw_liststyle = 3
-
-vim.cmd [[
-  highlight Pmenu ctermbg=NONE ctermfg=NONE
-  highlight PmenuSel ctermbg=NONE ctermfg=NONE
-  highlight PmenuThumb ctermbg=NONE
-  highlight FloatBorder ctermbg=NONE ctermfg=NONE
-  highlight NormalFloat ctermbg=NONE ctermfg=NONE
-]]
