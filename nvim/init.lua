@@ -89,7 +89,7 @@ cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
 require("mason").setup()
 vim.lsp.config("clangd", {
-  cmd = { "clangd", "--tweaks=-std=c++23" },
+  cmd = { "clangd" },
 })
 vim.lsp.enable("clangd")
 
