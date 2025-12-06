@@ -32,52 +32,59 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
-  { "numToStr/Comment.nvim" },
-  { "windwp/nvim-autopairs" },
-  { "ellisonleao/gruvbox.nvim", priority = 1000, config = true },
+  { "numToStr/Comment.nvim", config = true },
+  { "windwp/nvim-autopairs", config = true },
+  {
+    "ellisonleao/gruvbox.nvim",
+    priority = 1000,
+    config = function()
+      vim.cmd("colorscheme gruvbox")
+      vim.cmd [[
+        highlight Normal guibg=#1d2021
+        highlight NormalNC guibg=#1d2021
+      ]]
+    end
+  },
   { "neovim/nvim-lspconfig" },
-  { "williamboman/mason.nvim", config = true },
+  { "williamboman/mason.nvim" },
   { "williamboman/mason-lspconfig.nvim" },
-
   { "hrsh7th/nvim-cmp" },
   { "hrsh7th/cmp-nvim-lsp" },
   { "L3MON4D3/LuaSnip" },
   { "saadparwaiz1/cmp_luasnip" },
-
-{ "nvim-lua/plenary.nvim" },
+  { "nvim-lua/plenary.nvim" },
   { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
-{
-  "nvimtools/none-ls.nvim",
-  config = function()
-    local null_ls = require("null-ls")
-    null_ls.setup({
-      sources = {
-        null_ls.builtins.formatting.clang_format,
-        null_ls.builtins.formatting.black,
-      },
-    })
+  {
+    "nvimtools/none-ls.nvim",
+    config = function()
+      local null_ls = require("null-ls")
+      null_ls.setup({
+        sources = {
+          null_ls.builtins.formatting.clang_format,
+          null_ls.builtins.formatting.black,
+        },
+      })
 
-    vim.api.nvim_create_autocmd("BufWritePre", {
-      callback = function()
-        vim.lsp.buf.format({ async = false })
-      end,
-    })
-  end,
-}
-})
-vim.cmd("colorscheme gruvbox")
-vim.cmd [[
-  highlight Normal guibg=#1d2021
-  highlight NormalNC guibg=#1d2021
-]]
-
-require("nvim-treesitter.configs").setup({
-  ensure_installed = { "c", "cpp", "lua", "python" },
-  highlight = { enable = true },
+      vim.api.nvim_create_autocmd("BufWritePre", {
+        callback = function()
+          vim.lsp.buf.format({ async = false })
+        end,
+      })
+    end,
+  }
 })
 
-local cmp = require("cmp")
-local luasnip = require("luasnip")
+require("Comment").setup()
+require("nvim-autopairs").setup({
+  check_ts = true,
+  enable_check_bracket_line = false,
+  map_cr = true,
+  enable_moveright = true,
+  disable_filetype = { "TelescopePrompt" },
+})
+
+local cmp = require('cmp')
+local luasnip = require('luasnip')
 
 cmp.setup({
   snippet = {
@@ -93,37 +100,19 @@ cmp.setup({
   }),
 })
 
-vim.cmd [[
-  highlight Pmenu ctermbg=NONE ctermfg=NONE
-  highlight PmenuSel ctermbg=NONE ctermfg=NONE
-  highlight PmenuThumb ctermbg=NONE
-  highlight FloatBorder ctermbg=NONE ctermfg=NONE
-  highlight NormalFloat ctermbg=NONE ctermfg=NONE
-]]
-  
-require("nvim-autopairs").setup({
-  check_ts = true,
-  enable_check_bracket_line = false,
-  map_cr = true,
-  enable_moveright = true,
-  disable_filetype = { "TelescopePrompt" },
-})
-
 local cmp_autopairs = require('nvim-autopairs.completion.cmp')
-local cmp = require('cmp')
-cmp.event:on(
-  'confirm_done',
-  cmp_autopairs.on_confirm_done()
-)
+cmp.event:on('confirm_done', cmp_autopairs.on_confirm_done())
 
+require("mason").setup()
 require("mason-lspconfig").setup({
-  ensure_installed = { "clangd"},
+  ensure_installed = { "clangd", "pyright" },
 })
 
+local lspconfig = require("lspconfig")
 local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-vim.lsp.config["clangd"] = {
-  cmd = { "clangd" , "--tweaks=-std=c++23" },
+lspconfig.clangd.setup({
+  cmd = { "clangd", "--tweaks=-std=c++23" },
   capabilities = capabilities,
   on_attach = function(_, bufnr)
     local opts = { buffer = bufnr, silent = true }
@@ -132,10 +121,10 @@ vim.lsp.config["clangd"] = {
     vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
     vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
   end,
-}
+})
 
-vim.lsp.enable("clangd")
-vim.lsp.config["pyright"] = {
+lspconfig.pyright.setup({
+  capabilities = capabilities,
   on_attach = function(_, bufnr)
     local opts = { buffer = bufnr, silent = true }
     vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
@@ -143,10 +132,8 @@ vim.lsp.config["pyright"] = {
     vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
     vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
   end,
-  capabilities = require("cmp_nvim_lsp").default_capabilities(),
-}
-vim.lsp.enable("pyright")
-require("Comment").setup()
+})
+
 vim.diagnostic.config({
   float = { border = "single" },
   virtual_text = true,
@@ -156,3 +143,16 @@ vim.diagnostic.config({
 
 vim.g.netrw_banner = 0
 vim.g.netrw_liststyle = 3
+
+vim.cmd [[
+  highlight Pmenu ctermbg=NONE ctermfg=NONE
+  highlight PmenuSel ctermbg=NONE ctermfg=NONE
+  highlight PmenuThumb ctermbg=NONE
+  highlight FloatBorder ctermbg=NONE ctermfg=NONE
+  highlight NormalFloat ctermbg=NONE ctermfg=NONE
+]]
+
+require("nvim-treesitter.configs").setup({
+  ensure_installed = { "c", "cpp", "lua", "python" },
+  highlight = { enable = true },
+})
