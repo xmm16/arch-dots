@@ -124,6 +124,6 @@ vim.cmd [[
 ]]
 
 require("nvim-treesitter.configs").setup({
-  ensure_installed = { "c", "cpp", "lua", "python" },
+  ensure_installed = { "c", "cpp" },
   highlight = { enable = true }
 })
