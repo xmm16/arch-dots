@@ -1,3 +1,4 @@
+-- Basic settings
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.expandtab = true
@@ -17,6 +18,7 @@ vim.cmd [[
   highlight EndOfBuffer ctermbg=NONE
 ]]
 
+-- Lazy.nvim
 local lazypath = vim.fn.stdpath("data").."/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -40,14 +42,14 @@ require("lazy").setup({
       ]]
     end
   },
-  { "neovim/nvim-lspconfig", lazy = true },
-  { "williamboman/mason.nvim", lazy = true },
-  { "williamboman/mason-lspconfig.nvim", lazy = true },
-  { "hrsh7th/nvim-cmp", lazy = true },
-  { "hrsh7th/cmp-nvim-lsp", lazy = true },
-  { "L3MON4D3/LuaSnip", lazy = true },
-  { "saadparwaiz1/cmp_luasnip", lazy = true },
-  { "nvim-lua/plenary.nvim", lazy = true },
+  { "neovim/nvim-lspconfig" },
+  { "williamboman/mason.nvim" },
+  { "williamboman/mason-lspconfig.nvim" },
+  { "hrsh7th/nvim-cmp" },
+  { "hrsh7th/cmp-nvim-lsp" },
+  { "L3MON4D3/LuaSnip" },
+  { "saadparwaiz1/cmp_luasnip" },
+  { "nvim-lua/plenary.nvim" },
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdateSync",
@@ -56,13 +58,12 @@ require("lazy").setup({
         highlight = { enable = true },
         incremental_selection = { enable = false },
         indent = { enable = false },
+        autopairs = { enable = false }, -- optional if using nvim-autopairs
       })
-    end,
-    lazy = true,
+    end
   },
   {
     "nvimtools/none-ls.nvim",
-    lazy = true,
     config = function()
       local null_ls = require("null-ls")
       null_ls.setup({
@@ -72,14 +73,17 @@ require("lazy").setup({
   },
 })
 
+-- Comment and Autopairs
 require("Comment").setup()
 require("nvim-autopairs").setup({
-  check_ts = false,  -- faster
+  check_ts = true,
+  enable_check_bracket_line = false,
   map_cr = true,
   enable_moveright = true,
   disable_filetype = { "TelescopePrompt" }
 })
 
+-- CMP
 local cmp = require("cmp")
 local luasnip = require("luasnip")
 cmp.setup({
@@ -88,39 +92,40 @@ cmp.setup({
     ["<CR>"] = cmp.mapping.confirm({ select = true }),
     ["<C-Space>"] = cmp.mapping.complete(),
   }),
-  completion = { autocomplete = false }, -- manual completion
+  completion = { autocomplete = false }, -- manual trigger
   sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "luasnip" } }),
 })
 local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "cpp,c,h,hpp",
-  callback = function()
-    local lspconfig = require("lspconfig")
-    lspconfig.clangd.setup({
-      cmd = { "clangd", "--background-index", "--clang-tidy", "--completion-style=detailed", "--limit-results=500" },
-      flags = { debounce_text_changes = 500 },
-      capabilities = require("cmp_nvim_lsp").default_capabilities(),
-      on_attach = function(client, bufnr)
-        client.server_capabilities.semanticTokensProvider = nil  -- disable semantic tokens
-        local opts = { buffer = bufnr, silent = true }
-        vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-        vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-        vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-        vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-      end,
-    })
-  end
+-- Mason
+require("mason").setup()
+require("mason-lspconfig").setup({ ensure_installed = { "clangd" } })
+
+-- LSP (modern API)
+local lspconfig = require("lspconfig")
+lspconfig.clangd.setup({
+  cmd = { "clangd", "--background-index", "--clang-tidy", "--limit-results=500", "--completion-style=detailed" },
+  flags = { debounce_text_changes = 500 },
+  capabilities = require("cmp_nvim_lsp").default_capabilities(),
+  on_attach = function(client, bufnr)
+    client.server_capabilities.semanticTokensProvider = nil -- disable expensive semantic tokens
+    local opts = { buffer = bufnr, silent = true }
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
+    vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
+    vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
+    vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
+  end,
 })
 
 vim.diagnostic.config({
   float = { border = "single" },
-  virtual_text = false, -- avoid lag
+  virtual_text = false, -- reduces lag
   signs = true,
   update_in_insert = false,
 })
 
+-- Netrw
 vim.g.netrw_banner = 0
 vim.g.netrw_liststyle = 3
 
