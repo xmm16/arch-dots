@@ -57,7 +57,6 @@ require("lazy").setup({
       null_ls.setup({
         sources = {
           null_ls.builtins.formatting.clang_format,
-          null_ls.builtins.formatting.black,
         },
       })
       vim.api.nvim_create_autocmd("BufWritePre", {
@@ -84,15 +83,12 @@ local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done())
 
 require("mason").setup()
-require("mason-lspconfig").setup({ ensure_installed = { "clangd", "pyright" } })
+require("mason-lspconfig").setup({ ensure_installed = { "clangd" } })
 
-vim.lsp.config("clangd", {
+local lspconfig = require("lspconfig")
+lspconfig.clangd.setup({
   cmd = { "clangd", "--tweaks=-std=c++23" },
 })
-vim.lsp.enable("clangd")
-
-vim.lsp.config("pyright", {})
-vim.lsp.enable("pyright")
 
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
