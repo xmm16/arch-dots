@@ -111,7 +111,7 @@ vim.lsp.config.clangd = {
   root_markers = { '.git', 'compile_commands.json', 'compile_flags.txt' },
   flags = { debounce_text_changes = 500 },
 }
-vim.lsp.enable('clangd')
+-- vim.lsp.enable('clangd')
 
 -- When clangd attaches, adjust settings & keymaps
 vim.api.nvim_create_autocmd("LspAttach", {
